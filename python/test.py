@@ -14,7 +14,7 @@ empty_arr = np.zeros([2, 2])
 for row in range(img.shape[0]):
     # Exit Convolution
     for col in range(img.shape[1]):
-        empty_arr = img[row:row+2:1, col:col+2:1]
+        empty_arr = img[row:row + 2:1, col:col + 2:1]
         # print(empty_arr, row, col)
         product_arr = kernel * empty_arr
         output[row, col] = sum([sum(i) for i in product_arr])
@@ -36,7 +36,6 @@ print(x * x)
 
 print("test 3*************************************************")
 
-
 lis = []
 for i in range(img.shape[0]):
     lis.append(max(img[i]))
@@ -52,7 +51,6 @@ print(arr[idx])
 arr_ones = np.ones((4, 1))
 print(arr_ones)
 
-
 print("test 5*************************************************")
 
 x = np.array([[[0, 1], [2, 3]], [[4, 5], [6, 7]]])
@@ -67,10 +65,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # 100 linearly spaced numbers
-x = np.linspace(-5,5,100)
+x = np.linspace(-5, 5, 100)
 
 # the function, which is y = x^2 here
-y = x**2
+y = x ** 2
 
 # setting the axes at the centre
 
@@ -80,15 +78,22 @@ for i in range(1, 3):
 
 print("test 8*************************************************")
 offset = np.array([[-1, -1, -1, 0, 0, 1, 1, 1],
-                       [-1,  0, 1, -1, 1, -1, 0, 1]])
+                   [-1, 0, 1, -1, 1, -1, 0, 1]])
 region = np.array([[1, -1]]).T
 print(np.arange(0, 5, 0.5))
 
 print("test 9*************************************************")
-x = [1, 2, 3]
-x1 = np.array(x)
-y1 = np.array([1, 2, 3])
-print()
+m = np.array([[1], [2], [3]])
+print(m.T * m)
 
-#plt.plot(x_coordinates, y2_coordinates)
-plt.show()
+print("test 10*************************************************")
+import matplotlib.pyplot as plt
+
+# define corner points
+x = [1,2,1,0]
+y = [2,1,0,1]
+
+# plot
+im = plt.fill(x, y)
+
+

@@ -7,6 +7,8 @@ import rectangle_self
 import polarity
 import line_sim
 import proximity
+import collinearity
+import shade
 from PIL import Image
 import matplotlib.pyplot as plt
 from scipy.cluster.vq import vq, kmeans, whiten
@@ -203,7 +205,7 @@ def main():
                 rect_angle(pseudo rect_angle) + pi/2 = the true rect_angle
                 remove all line segments whose slope less than pi/4
                 """
-                if abs(abs(rect_angle) - math.pi / 2) < math.pi / 12:
+                if abs(abs(rect_angle) - math.pi / 2) < math.pi / 8:
                     continue
                 """
                 print all pseudo rect_angle
@@ -238,28 +240,37 @@ def main():
         else:
             theta = n_angle + math.pi
             rho = -rho
-        ymin = p0[1] - abs(L / 2 * math.cos(theta))
-        ymax = p0[1] + abs(L / 2 * math.cos(theta))
+
         # xmin = p0[0] - abs(L/2 * math.sin(theta))
         # xmax = p0[0] + abs(L/2 * math.sin(theta))
         polar = polarity.polarity(output_regions[i], gx)
+        rho = rho[0, 0]
+        theta = theta[0]
+        ymin = p0[1] - abs(L / 2 * math.cos(theta))
+        ymin = ymin[0][0, 0]
+        # print(type(ymin))
+        ymax = p0[1] + abs(L / 2 * math.cos(theta))
+        ymax = ymax[0][0, 0]
         segment_functions[i] = np.array([[rho], [theta], [ymin], [ymax], [polar]])
         # Visualization2: plot line segments detected
         # x = np.arange(xmin, xmax + 0.1, 0.1)
         # y = (rho[0, 0] - x * math.cos(theta)) / math.sin(theta)
-        # print(y)
+        # print(type(ymax)) <class 'numpy.float64'>
         y = np.arange(ymin, ymax + 0.1, 0.1)
-        x = (rho[0, 0] - y * math.sin(theta)) / math.cos(theta)
+        x = (rho - y * math.sin(theta)) / math.cos(theta)
         y_axis = 300 - y  # this instruction is to make two layers match with each
         x_axis = x
-        plt.plot(x_axis, y_axis, lw=1)
+        if polar > 0:
+            plt.plot(x_axis, y_axis, 'b', lw=1)
+        else:
+            plt.plot(x_axis, y_axis, 'r', lw=1)
     implot = plt.imshow(imm)
     plt.show()
 
     # Hyper parameters
-    eps_theta = math.pi / 32
+    eps_theta = math.pi / 12
     eps_rho_base = 5
-    eps_dist = 10
+    eps_dist = 2
 
     segment_usage = np.zeros((count, 1), dtype=int)
     # combinations is a 'list' of arrays
@@ -269,6 +280,7 @@ def main():
     ydiff = np.zeros((len(segment_functions), 1), dtype=int)
     for i in range(len(segment_functions)):
         ydiff[i] = segment_functions[i][3, 0] - segment_functions[i][2, 0]
+        # ymax - ymin
 
     sort_index = ydiff.argsort(axis=0)
     # seed = {}
@@ -289,7 +301,8 @@ def main():
             if segment_usage[j] == used:
                 continue
             # if line_sim == 1, then two segments will be combined together
-            if line_sim.line_sim(segment_functions[i], segment_functions[j], eps_theta, eps_dist) == 1:
+            if collinearity.collinearity(segment_functions[i], segment_functions[j], eps_dist) == 1:
+                # if segment_functions[i][4, 0] == segment_functions[j][4, 0]: # result: two lines
                 # if seg1 & seg2 belong to the same segment, then they will be combined together
                 wait_arr = np.concatenate((wait_arr, np.concatenate((segment_functions[j],
                                                                      np.array([[j]])), axis=0)), axis=1)
@@ -301,31 +314,43 @@ def main():
             cur_comb ---    ndarray type
             cur_ymax ---    int, float...not sure, not ndarray
         """
+        # idx = np.argsort(wait_arr.T[:, 2])
+        # wait_arr = wait_arr.T[idx].T
+        # print(wait_arr.shape) (2, )
+        # wait_arr_size = wait_arr.shape[1]
         idx = np.argsort(wait_arr.T[:, 2])
         wait_arr = wait_arr.T[idx].T
         # print(wait_arr.shape)
         wait_arr_size = wait_arr.shape[1]
-        cur_ymax = 0
         tolerance = 10
         cur_comb = np.array([[wait_arr[5, 0]]])
         cur_ymax = wait_arr[3, 0]
-        for j in range(1, wait_arr_size):
-            if cur_ymax + tolerance > wait_arr[2, j]:
-                cur_comb = np.concatenate((cur_comb, np.array([[wait_arr[5, j]]])), axis=1)
-                cur_ymax = wait_arr[3, j]
+        for m in range(1, wait_arr_size):
+            # print(segment_functions[wait_arr[5, m]][4:0]) # result: [][]...[]
+            print(wait_arr[:, m])
+            if cur_ymax + tolerance > wait_arr[2, m]:
+                cur_comb = np.concatenate((cur_comb, np.array([[wait_arr[5, m]]])), axis=1)
+                if cur_ymax < wait_arr[3, m]:
+                    cur_ymax = wait_arr[3, m]
+                # cur_ymax = wait_arr[3, m]
             else:
                 # combinations[k] = np.concatenate((combinations, cur_comb), axis=1)
                 combinations[k] = cur_comb
+                print(combinations[k].shape)
                 k = k + 1
                 # reset cur_comb
-                cur_comb = np.array([[wait_arr[5, j]]])
-                cur_ymax = wait_arr[3, j]
+                cur_comb = np.array([[wait_arr[5, m]]])
+                # if cur_ymax < wait_arr[3, j]:
+                #    cur_ymax = wait_arr[3, j]
+                cur_ymax = wait_arr[3, m]
         # combinations[k] = np.concatenate((combinations, cur_comb), axis=1)
         combinations[k] = cur_comb
+        print(combinations[k].shape)
         k = k + 1
 
     # Combine some segmentations
     # Hyper-parameter
+    # Use simple averaging method, ez to optimize the accuracy
     G_thresh = threshold * 3
     p_num = 0
     n_num = 0
@@ -335,51 +360,36 @@ def main():
         # print(i)
         polar = segment_functions[combinations[i][0, 0]][4, 0]
         ymin = segment_functions[combinations[i][0, 0]][2, 0]
+        # print(ymin)
         ymax = segment_functions[combinations[i][0, 0]][3, 0]
-        bw = np.zeros((M, N), dtype=int)
-        for j in range(len(combinations[i])):
+        rho = segment_functions[combinations[i][0, 0]][0, 0]
+        # print(rho)
+        theta = segment_functions[combinations[i][0, 0]][1, 0]
+
+        # print(theta)
+        xmin = (rho - ymin * math.sin(theta)) / math.cos(theta)
+        xmax = (rho - ymax * math.sin(theta)) / math.cos(theta)
+        # print(1)
+        for j in range(len(combinations[i][0, :])):  # this is the bug confusing me a lot...
             idx = combinations[i][0, j]
-            new_y_min = segment_functions[idx][2, 0]
-            new_y_max = segment_functions[idx][3, 0]
-            if new_y_min < ymin:
-                ymin = new_y_min
-            if new_y_max > ymax:
-                ymax = new_y_max
-            for k in range(len(output_regions[idx][0, :])):
-                if G[output_regions[idx][0, k], output_regions[idx][1, k]] > G_thresh:
-                    bw[output_regions[idx][0, k], output_regions[idx][1, k]] = 1
-                    # print(output_regions[idx][0, k])
-                    # bw[output_rectangles[idx][0, k], output_rectangles[idx][1, k]] = 1
-        # generate a binary image
-        bw = np.flipud(bw)
-        # h, theta, d = hough_line(bw)
-        # p = hough_line_peaks()
-        """:parameter
-            cv.HoughLines(bw, 1, np.pi/180, 5)
-            bw:         binary image
-            1:          r accuracy
-            np.pi/180   theta accuracy
-            5           min length of line that should be detected
-        """
-        # print(bw.shape)
-        # this is a tricky error:
-        # (-215:Assertion failed) img.type() == CV_8UC1 in function 'cv::HoughLinesStandard'
-        bw = np.uint8(bw)
-        # print(type(bw)) to check the dtype of bw in each loop
-        # debug result: <class 'numpy.ndarray'>
-        # print(type(bw))
-        lines = cv.HoughLines(bw, 1, np.pi / 180, 1)
-        if lines is None:
-            continue
-        # if len(lines[:, 0, 0]) < 1:
-            # continue
-        # debug result: in the last loop, type(lines)=nonetype
-        # print(type(lines))
-        rho = lines[0][0, 0]
-        theta = lines[0][0, 1]
-        # erase small line segments
-        if ymax - ymin < 1:
-            continue
+            new_rho = segment_functions[idx][0, 0]
+            new_theta = segment_functions[idx][1, 0]
+            new_ymin = segment_functions[idx][2, 0]
+            new_ymax = segment_functions[idx][3, 0]
+            # print(0)
+            if new_ymin < ymin:
+                ymin = new_ymin
+                xmin = (new_rho - ymin * math.sin(new_theta)) / math.cos(new_theta)
+                # print(1)
+            if new_ymax > ymax:
+                ymax = new_ymax
+                xmax = (new_rho - ymax * math.sin(new_theta)) / math.cos(new_theta)
+                # print(1)
+
+        theta = math.atan((xmin - xmax) / (ymax - ymin))
+        # this should be correct
+        rho = xmax * math.cos(theta) + ymax * math.sin(theta)
+
         if polar > 0:
             pos_segments[p_num] = np.array([[rho], [theta], [ymin], [ymax], [polar]])
             p_num = p_num + 1
@@ -389,7 +399,7 @@ def main():
 
         y = np.arange(ymin, ymax + 0.1, 0.1)
         x = (rho - y * math.sin(theta)) / math.cos(theta)
-
+        # print(rho.shape)
         """visualization 3: plot the grouped line segments with polariry
             if polar > 0
                 plot sth
@@ -418,21 +428,45 @@ def main():
 
     for i in range(K2):
         for j in range(K1):
-            score = proximity.proximity(pos_segments[j], neg_segments[i])
-            # pos_segments[j] = pos_segments[j]
-        # neg_segments[i] = neg_segments[i]
+            score = proximity.proximity(pos_segments[j], neg_segments[i], eps_theta)
+            score_matrix[j, i] = score
+
+    order = np.zeros((K1, K2))
+    for i in range(K2):
+        order[:, i] = np.argsort(score_matrix[:, i])
+        order[:, i] = np.flipud(order[:, i])
+
+    pos_matched = np.zeros([K1, 1])
+    pos_left = K1
+    neg_matched = np.zeros([K2, 1])
+    neg_left = K2
+
+    pairs = np.zeros((2, 1), dtype=int)
+    itr = 0
+    n1, n2 = score_matrix.shape
+    for j in range(n1):
+        for i in range(n2):
+            print(pos_segments[j][4, 0], neg_segments[i][4, 0])
+            if score_matrix[j, i] > 0:
+                shade.shade(pos_segments[j], neg_segments[i])
+                if itr == 0:
+                    pairs = np.array([[j], [i]])
+                    itr = itr + 1
+                else:
+                    pairs = np.concatenate((pairs, np.array([[j], [i]])), axis=1)
+                    itr = itr + 1
+    implot = plt.imshow(imm)
+    plt.show()
 
     """
     7th step:
     Construct stripelets using matched line segments
     """
 
-
     """
     8th step:
     Compute connectivity of the stripelets
     """
-
 
     """
     9th step:
@@ -448,6 +482,7 @@ def main():
     11th step:
     Belief propatation, message update
     """
+
 
 if __name__ == "__main__":
     main()

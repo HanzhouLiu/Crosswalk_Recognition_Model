@@ -203,7 +203,7 @@ def main():
                 rect_angle(pseudo rect_angle) + pi/2 = the true rect_angle
                 remove all line segments whose slope less than pi/4
                 """
-                if abs(abs(rect_angle) - math.pi / 2) < math.pi / 12:
+                if abs(abs(rect_angle) - math.pi / 2) < math.pi / 8:
                     continue
                 """
                 print all pseudo rect_angle
@@ -238,28 +238,34 @@ def main():
         else:
             theta = n_angle + math.pi
             rho = -rho
-        ymin = p0[1] - abs(L / 2 * math.cos(theta))
-        ymax = p0[1] + abs(L / 2 * math.cos(theta))
+
         # xmin = p0[0] - abs(L/2 * math.sin(theta))
         # xmax = p0[0] + abs(L/2 * math.sin(theta))
         polar = polarity.polarity(output_regions[i], gx)
+        rho = rho[0, 0]
+        theta = theta[0]
+        ymin = p0[1] - abs(L / 2 * math.cos(theta))
+        ymin = ymin[0][0, 0]
+        # print(type(ymin))
+        ymax = p0[1] + abs(L / 2 * math.cos(theta))
+        ymax = ymax[0][0, 0]
         segment_functions[i] = np.array([[rho], [theta], [ymin], [ymax], [polar]])
         # Visualization2: plot line segments detected
         # x = np.arange(xmin, xmax + 0.1, 0.1)
         # y = (rho[0, 0] - x * math.cos(theta)) / math.sin(theta)
         # print(y)
         y = np.arange(ymin, ymax + 0.1, 0.1)
-        x = (rho[0, 0] - y * math.sin(theta)) / math.cos(theta)
+        x = (rho - y * math.sin(theta)) / math.cos(theta)
         y_axis = 300 - y  # this instruction is to make two layers match with each
         x_axis = x
-        plt.plot(x_axis, y_axis, lw=1)
+        plt.plot(x_axis, y_axis, 'r', lw=1)
     implot = plt.imshow(imm)
     plt.show()
 
     # Hyper parameters
     eps_theta = math.pi / 32
     eps_rho_base = 5
-    eps_dist = 10
+    eps_dist = 0.1
 
     segment_usage = np.zeros((count, 1), dtype=int)
     # combinations is a 'list' of arrays
@@ -326,6 +332,7 @@ def main():
 
     # Combine some segmentations
     # Hyper-parameter
+    # Use simple averaging method, ez to optimize the accuracy
     G_thresh = threshold * 3
     p_num = 0
     n_num = 0
@@ -335,8 +342,16 @@ def main():
         # print(i)
         polar = segment_functions[combinations[i][0, 0]][4, 0]
         ymin = segment_functions[combinations[i][0, 0]][2, 0]
+        # print(ymin)
         ymax = segment_functions[combinations[i][0, 0]][3, 0]
-        bw = np.zeros((M, N), dtype=int)
+        rho = segment_functions[combinations[i][0, 0]][0, 0]
+        # print(rho)
+        theta = segment_functions[combinations[i][0, 0]][1, 0]
+        # print(theta)
+        y_beg = ymin
+        x_beg = (rho - y_beg * math.sin(theta)) / math.cos(theta)
+        y_end = y_beg
+        x_end = x_beg
         for j in range(len(combinations[i])):
             idx = combinations[i][0, j]
             new_y_min = segment_functions[idx][2, 0]
@@ -345,41 +360,16 @@ def main():
                 ymin = new_y_min
             if new_y_max > ymax:
                 ymax = new_y_max
-            for k in range(len(output_regions[idx][0, :])):
-                if G[output_regions[idx][0, k], output_regions[idx][1, k]] > G_thresh:
-                    bw[output_regions[idx][0, k], output_regions[idx][1, k]] = 1
-                    # print(output_regions[idx][0, k])
-                    # bw[output_rectangles[idx][0, k], output_rectangles[idx][1, k]] = 1
-        # generate a binary image
-        bw = np.flipud(bw)
-        # h, theta, d = hough_line(bw)
-        # p = hough_line_peaks()
-        """:parameter
-            cv.HoughLines(bw, 1, np.pi/180, 5)
-            bw:         binary image
-            1:          r accuracy
-            np.pi/180   theta accuracy
-            5           min length of line that should be detected
-        """
-        # print(bw.shape)
-        # this is a tricky error:
-        # (-215:Assertion failed) img.type() == CV_8UC1 in function 'cv::HoughLinesStandard'
-        bw = np.uint8(bw)
-        # print(type(bw)) to check the dtype of bw in each loop
-        # debug result: <class 'numpy.ndarray'>
-        # print(type(bw))
-        lines = cv.HoughLines(bw, 1, np.pi / 180, 1)
-        if lines is None:
-            continue
-        # if len(lines[:, 0, 0]) < 1:
-            # continue
-        # debug result: in the last loop, type(lines)=nonetype
-        # print(type(lines))
-        rho = lines[0][0, 0]
-        theta = lines[0][0, 1]
-        # erase small line segments
-        if ymax - ymin < 1:
-            continue
+            rho = segment_functions[idx][0, 0]
+            theta = segment_functions[idx][1, 0]
+            y_temp = new_y_max
+            if new_y_max > y_end:
+                x_end = (rho - y_temp * math.sin(theta)) / math.cos(theta)
+                y_end = new_y_max
+
+        theta = math.atan((x_beg - x_end)/(y_end - y_beg))
+        rho = x_beg * math.cos(theta) + y_beg * math.sin(theta)
+
         if polar > 0:
             pos_segments[p_num] = np.array([[rho], [theta], [ymin], [ymax], [polar]])
             p_num = p_num + 1
@@ -389,7 +379,7 @@ def main():
 
         y = np.arange(ymin, ymax + 0.1, 0.1)
         x = (rho - y * math.sin(theta)) / math.cos(theta)
-
+        # print(rho.shape)
         """visualization 3: plot the grouped line segments with polariry
             if polar > 0
                 plot sth

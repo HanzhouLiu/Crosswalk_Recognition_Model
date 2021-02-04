@@ -36,3 +36,13 @@ def max_element(arr):
     for i in range(arr.shape[0]):
         lis.append(max(arr[i]))
     return max(lis)
+
+
+def tri_area(A, B, C):
+    """
+    A, B, C should be vectors (2, )
+    """
+    x1, y1, x2, y2, x3, y3 = A[0], A[1], B[0], B[1], C[0], C[1]
+    S = 0.5 * abs((x2 - x1) * (y3 - y1) - (x3 - x1) * (y2 - y1))
+    # S = 0.5 * abs(x1*(y2-y3)+x2*(y3-y1)+x3*(y1-y2))
+    return S
