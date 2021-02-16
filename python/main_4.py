@@ -1,3 +1,8 @@
+"""
+    This version of codes introduces various zones to as
+    a filter.
+"""
+
 import cv2 as cv
 import numpy as np
 import math_tools as mt
@@ -5,21 +10,11 @@ import math
 import region_grow
 import rectangle_self
 import polarity
-import line_sim
 import proximity
 import collinearity
 import shade
 import expand
-from PIL import Image
 import matplotlib.pyplot as plt
-from scipy.cluster.vq import vq, kmeans, whiten
-from sklearn.cluster import KMeans
-from skimage.transform import hough_line, hough_line_peaks
-from skimage.feature import canny
-from skimage import data
-
-
-# Python Imaging Library
 
 
 def main():
@@ -28,7 +23,7 @@ def main():
     N = 400
 
     print("zebra-crossing detection algorithm")
-    filename = '../Samples/image009.jpg'
+    filename = '../Samples/image003.jpg'
     img = cv.imread(filename)
     gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
     # white pixel == 255
@@ -71,8 +66,6 @@ def main():
 
     gx = mt.conv2(zero_padded_img, x_kernel) / 2
     gy = mt.conv2(zero_padded_img, y_kernel) / 2
-    # gx = cv.filter2D(img, -1, kernel=x_kernel, anchor=(-1, -1), borderType=cv.BORDER_DEFAULT)
-    # gy = cv.filter2D(img, -1, kernel=y_kernel, anchor=(-1, -1))
     # for i in range(gx.shape[0]):
     #     for j in range(gx.shape[1]):
     #         if gx[i, j] < 0:
@@ -251,9 +244,13 @@ def main():
         theta = theta[0]
         ymin = p0[1] - abs(L / 2 * math.cos(theta))
         ymin = ymin[0][0, 0]
+        if ymin <= 0:
+            ymin = 0
         # print(type(ymin))
         ymax = p0[1] + abs(L / 2 * math.cos(theta))
         ymax = ymax[0][0, 0]
+        if ymax >= 299:
+            ymax = 299
         segment_functions[i] = np.array([[rho], [theta], [ymin], [ymax], [polar]])
         # Visualization2: plot line segments detected
         # x = np.arange(xmin, xmax + 0.1, 0.1)
@@ -267,11 +264,12 @@ def main():
             plt.plot(x_axis, y_axis, 'b', lw=1)
         else:
             plt.plot(x_axis, y_axis, 'r', lw=1)
-    implot = plt.imshow(imm)
+    plt.imshow(imm)
     plt.show()
 
     # Hyper parameters
-    eps_theta = math.pi / 12
+    # eps_theta = seg1_theta - seg2_theta, it should be set to a large angle
+    eps_theta = math.pi / 4
     eps_rho_base = 5
     eps_dist = 2
 
@@ -286,15 +284,45 @@ def main():
         # ymax - ymin
 
     sort_index = ydiff.argsort(axis=0)
-    # seed = {}
+
+    # calculate edges' elements
+    # edges: 1-d np array in ascending order [0, 300)
+    cos_sim = np.ones(300)
+    eps_sim = 0.70
+    edges = np.zeros(1, dtype=int)
+    for y0 in range(299):
+        if y0 == 0:
+            continue
+        A = gy[y0, :]
+        B = gy[y0 + 1, :]
+        dot_product = np.dot(A, B)
+        mag_A = np.linalg.norm(A)
+        mag_B = np.linalg.norm(B)
+        cos_sim[y0] = dot_product / (mag_A * mag_B)
+        if cos_sim[y0] < eps_sim < cos_sim[y0 - 1]:
+            edges = np.append(edges, np.array([y0]))
+            # print(edges)
+    edges = np.append(edges, np.array([[299]]))
+
+    for m in range(count):
+        ymin = segment_functions[m][2, 0]
+        ymax = segment_functions[m][3, 0]
+        for n in range(len(edges)-1):
+            y0 = edges[n]
+            y1 = edges[n+1]
+            if y1 > ymin >= y0:
+                if ymin+0.5*(ymax-ymin) <= y1:
+                    segment_functions[m] = np.concatenate((segment_functions[m], np.array([[y0]])), axis=0)
+                else:
+                    segment_functions[m] = np.concatenate((segment_functions[m], np.array([[y1]])), axis=0)
+        if len(segment_functions[m][:, 0]) == 5:
+            print(segment_functions[m][3, 0])
+        # print(segment_functions[m].shape)
 
     for ii in range(count):
-        # i.shape = np.ndarray
         i = int(sort_index[ii])
-        # print(i)
         if segment_usage[i] == used:
             continue
-        # seed[i] = segment_functions[i]
         # wait_arr = np.zeros((6, 1), dtype=int)
         wait_arr = np.concatenate((segment_functions[i], np.array([[i]])), axis=0)
 
@@ -310,8 +338,6 @@ def main():
                 wait_arr = np.concatenate((wait_arr, np.concatenate((segment_functions[j],
                                                                      np.array([[j]])), axis=0)), axis=1)
                 segment_usage[j] = used
-        # print(type(segment_functions[1]))
-        # print(segment_functions[1].shape)
         """
             wait_arr ---    belong to the same segmentation
             cur_comb ---    ndarray type
@@ -326,13 +352,14 @@ def main():
         # print(wait_arr.shape)
         wait_arr_size = wait_arr.shape[1]
         tolerance = 10
-        cur_comb = np.array([[wait_arr[5, 0]]])
+        cur_comb = np.array([[wait_arr[6, 0]]])
         cur_ymax = wait_arr[3, 0]
         for m in range(1, wait_arr_size):
             # print(segment_functions[wait_arr[5, m]][4:0]) # result: [][]...[]
+            # change wait_arr[5, m] into 6 cuz add another row into the array
             print(wait_arr[:, m])
             if cur_ymax + tolerance > wait_arr[2, m]:
-                cur_comb = np.concatenate((cur_comb, np.array([[wait_arr[5, m]]])), axis=1)
+                cur_comb = np.concatenate((cur_comb, np.array([[wait_arr[6, m]]])), axis=1)
                 if cur_ymax < wait_arr[3, m]:
                     cur_ymax = wait_arr[3, m]
                 # cur_ymax = wait_arr[3, m]
@@ -342,7 +369,7 @@ def main():
                 print(combinations[k].shape)
                 k = k + 1
                 # reset cur_comb
-                cur_comb = np.array([[wait_arr[5, m]]])
+                cur_comb = np.array([[wait_arr[6, m]]])
                 # if cur_ymax < wait_arr[3, j]:
                 #    cur_ymax = wait_arr[3, j]
                 cur_ymax = wait_arr[3, m]
@@ -361,6 +388,7 @@ def main():
     neg_segments = {}
     for i in range(len(combinations)):
         # print(i)
+        y0 = segment_functions[combinations[i][0, 0]][5, 0]
         polar = segment_functions[combinations[i][0, 0]][4, 0]
         ymin = segment_functions[combinations[i][0, 0]][2, 0]
         # print(ymin)
@@ -394,10 +422,10 @@ def main():
         rho = xmax * math.cos(theta) + ymax * math.sin(theta)
 
         if polar > 0:
-            pos_segments[p_num] = np.array([[rho], [theta], [ymin], [ymax], [polar]])
+            pos_segments[p_num] = np.array([[rho], [theta], [ymin], [ymax], [polar], [y0]])
             p_num = p_num + 1
         else:
-            neg_segments[n_num] = np.array([[rho], [theta], [ymin], [ymax], [polar]])
+            neg_segments[n_num] = np.array([[rho], [theta], [ymin], [ymax], [polar], [y0]])
             n_num = n_num + 1
 
         y = np.arange(ymin, ymax + 0.1, 0.1)
@@ -415,7 +443,7 @@ def main():
             plt.plot(x_axis, y_axis, 'b', lw=1)
         else:
             plt.plot(x_axis, y_axis, 'r', lw=1)
-    implot = plt.imshow(imm)
+    plt.imshow(imm)
     plt.show()
     """
     6th step:
@@ -431,7 +459,7 @@ def main():
 
     for i in range(K2):
         for j in range(K1):
-            score = proximity.proximity(pos_segments[j], neg_segments[i], eps_theta)
+            score = proximity.proximity(pos_segments[j], neg_segments[i], eps_theta, imm, grayscale=70, ratio=0.35)
             score_matrix[j, i] = score
 
     order = np.zeros((K1, K2))

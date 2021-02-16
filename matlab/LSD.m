@@ -3,7 +3,7 @@ clc;
 close all;
 
 %% Step 0: Read input image
-im  = rgb2gray(imread('../samples/image004.jpg'));
+im  = rgb2gray(imread('../samples/zebra3.jpg'));
 im = imresize(im, [300, 400]);
 iim = im;   % for visualization
 im = 255 - im;
