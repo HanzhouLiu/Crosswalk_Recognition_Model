@@ -49,10 +49,7 @@ def collinearity(seg1, seg2, eps_dist):
 
     hd_avr1, hd_avr2 = hd.hd(A, B, C, D)
 
-    if hd_avr1 < eps_dist and hd_avr2 < eps_dist:
+    if hd_avr1 < eps_dist and hd_avr2 < eps_dist and polar1 == polar2 and y01 == y02:
         rst = 1
-
-    if y01 != y02 or polar1 != polar2:
-        rst = 0
 
     return rst

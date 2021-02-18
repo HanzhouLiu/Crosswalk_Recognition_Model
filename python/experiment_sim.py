@@ -12,23 +12,31 @@ import shade
 import expand
 from PIL import Image
 import matplotlib.pyplot as plt
-from scipy.cluster.vq import vq, kmeans, whiten
-from sklearn.cluster import KMeans
-from skimage.transform import hough_line, hough_line_peaks
-from skimage.feature import canny
-from skimage import data
+
 
 
 # Python Imaging Library
 
-
+"""
+    0 1 2 .................400
+    --------------------------
+   1|
+   2|
+   3|
+   4|
+   5|
+    .
+    .
+    .
+ 300|
+"""
 def main():
     # Hyper-parameters
     M = 300
     N = 400
 
     print("zebra-crossing detection algorithm")
-    filename = '../Samples/image009.jpg'
+    filename = '../Samples/image003.jpg'
     img = cv.imread(filename)
     gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
     # white pixel == 255
@@ -41,8 +49,8 @@ def main():
     cv.addWeighted(img_blur, 1.5, img, -0.5, 0, img)
 
     # Visualization1: Preprocessed image
-    cv.imshow("img", imm)
-    cv.waitKey(0)
+    # cv.imshow("img", imm)
+    # cv.waitKey(0)
 
     [w, h] = img.shape
     # w=image width, h=image height

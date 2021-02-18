@@ -131,7 +131,7 @@ def proximity(seg1, seg2, eps_theta, imm, grayscale, ratio):
                 arr_points[i, j] = 1
                 rr = i + PTS0[1]
                 cc = j + PTS0[0]
-                if imm[rr, cc] > grayscale:
+                if imm[299-rr, cc] <= grayscale:
                     bright_area = bright_area+1
                 else:
                     dark_area = dark_area+1

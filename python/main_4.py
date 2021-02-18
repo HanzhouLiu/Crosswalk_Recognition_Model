@@ -15,6 +15,7 @@ import collinearity
 import shade
 import expand
 import matplotlib.pyplot as plt
+from random import gauss
 
 
 def main():
@@ -34,22 +35,28 @@ def main():
     img = 255 - img
     # cv.imshow("img", imm)
     # cv.waitKey(0)
+    # cv.imwrite('grayscale_img2_.png', img)
     # cv.imshow("img", img)
     # cv.waitKey(0)
-
+    
+    
     """
     1st step: GaussianBlur
     Filter the image with a Gaussian filter with standard deviation of 0.6/0.8
     Therefore, a Gaussian kernel is used.
     It's done with the function cv2.GaussianBlur()
+    
+    ps: OTSU's Binarization is used to differentiate dark areas and bright areas
     """
     img_blur = cv.GaussianBlur(img, sigmaX=0.6 / 0.8, sigmaY=0.6 / 0.8, ksize=(3, 3))
     cv.addWeighted(img_blur, 1.5, img, -0.5, 0, img)
-
+    # gauss_th = cv.adaptiveThreshold(img,255,cv.ADAPTIVE_THRESH_GAUSSIAN_C,cv.THRESH_BINARY,11,2)
+    ret3,otsu_th = cv.threshold(img_blur,0,255,cv.THRESH_BINARY+cv.THRESH_OTSU)
+    # cv.imwrite('../data/pre_img/img_blur2.jpg', img)
     # Visualization1: Preprocessed image
-    cv.imshow("img", imm)
-    cv.waitKey(0)
-
+    # cv.imshow("img", otsu_th)
+    # cv.waitKey(0)
+    
     """
     2nd step: Compute Gradient
     """
@@ -99,7 +106,6 @@ def main():
     angle = mt.atan2(-gy, gx)
     # atan2 allows us to calculate the arctangent of all four quadrants
     G = mt.sqrt(gx, gy)
-
     """
     3rd step: Sort Gradient 
     """
@@ -271,7 +277,7 @@ def main():
     # eps_theta = seg1_theta - seg2_theta, it should be set to a large angle
     eps_theta = math.pi / 4
     eps_rho_base = 5
-    eps_dist = 2
+    eps_dist = 10
 
     segment_usage = np.zeros((count, 1), dtype=int)
     # combinations is a 'list' of arrays
@@ -303,11 +309,16 @@ def main():
             edges = np.append(edges, np.array([y0]))
             # print(edges)
     edges = np.append(edges, np.array([[299]]))
-
+    # print(299-edges)
+     
     for m in range(count):
-        ymin = segment_functions[m][2, 0]
-        ymax = segment_functions[m][3, 0]
-        for n in range(len(edges)-1):
+        # ymin = segment_functions[m][2, 0]
+        # ymax = segment_functions[m][3, 0]
+        ymax = 300-segment_functions[m][2, 0]
+        ymin = 300-segment_functions[m][3, 0]
+        # print(ymin, ymax) result: ymin and ymax are correct here,
+        # in other words, ymin < ymax
+        for n in range(len(edges)-1): # len -1, otherwise, bug: out of range
             y0 = edges[n]
             y1 = edges[n+1]
             if y1 > ymin >= y0:
@@ -315,8 +326,8 @@ def main():
                     segment_functions[m] = np.concatenate((segment_functions[m], np.array([[y0]])), axis=0)
                 else:
                     segment_functions[m] = np.concatenate((segment_functions[m], np.array([[y1]])), axis=0)
-        if len(segment_functions[m][:, 0]) == 5:
-            print(segment_functions[m][3, 0])
+        # if len(segment_functions[m][:, 0]) == 5:
+        #    print('error') # no output here, so the new element has been added into each col
         # print(segment_functions[m].shape)
 
     for ii in range(count):
@@ -325,7 +336,7 @@ def main():
             continue
         # wait_arr = np.zeros((6, 1), dtype=int)
         wait_arr = np.concatenate((segment_functions[i], np.array([[i]])), axis=0)
-
+  
         segment_usage[i] = used
         for jj in range(ii + 1, count):
             j = int(sort_index[jj])
@@ -357,7 +368,7 @@ def main():
         for m in range(1, wait_arr_size):
             # print(segment_functions[wait_arr[5, m]][4:0]) # result: [][]...[]
             # change wait_arr[5, m] into 6 cuz add another row into the array
-            print(wait_arr[:, m])
+            # print(wait_arr[:, m])
             if cur_ymax + tolerance > wait_arr[2, m]:
                 cur_comb = np.concatenate((cur_comb, np.array([[wait_arr[6, m]]])), axis=1)
                 if cur_ymax < wait_arr[3, m]:
@@ -366,7 +377,7 @@ def main():
             else:
                 # combinations[k] = np.concatenate((combinations, cur_comb), axis=1)
                 combinations[k] = cur_comb
-                print(combinations[k].shape)
+                # print(combinations[k].shape)
                 k = k + 1
                 # reset cur_comb
                 cur_comb = np.array([[wait_arr[6, m]]])
@@ -375,7 +386,7 @@ def main():
                 cur_ymax = wait_arr[3, m]
         # combinations[k] = np.concatenate((combinations, cur_comb), axis=1)
         combinations[k] = cur_comb
-        print(combinations[k].shape)
+        # print(combinations[k].shape)
         k = k + 1
 
     # Combine some segmentations
@@ -396,12 +407,11 @@ def main():
         rho = segment_functions[combinations[i][0, 0]][0, 0]
         # print(rho)
         theta = segment_functions[combinations[i][0, 0]][1, 0]
-
         # print(theta)
         xmin = (rho - ymin * math.sin(theta)) / math.cos(theta)
         xmax = (rho - ymax * math.sin(theta)) / math.cos(theta)
         # print(1)
-        for j in range(len(combinations[i][0, :])):  # this is the bug confusing me a lot...
+        for j in range(len(combinations[i][0, :])):
             idx = combinations[i][0, j]
             new_rho = segment_functions[idx][0, 0]
             new_theta = segment_functions[idx][1, 0]
@@ -459,7 +469,7 @@ def main():
 
     for i in range(K2):
         for j in range(K1):
-            score = proximity.proximity(pos_segments[j], neg_segments[i], eps_theta, imm, grayscale=70, ratio=0.35)
+            score = proximity.proximity(pos_segments[j], neg_segments[i], eps_theta, img, grayscale=180, ratio=0.10)
             score_matrix[j, i] = score
 
     order = np.zeros((K1, K2))
@@ -492,7 +502,7 @@ def main():
                     itr = itr + 1
     plt.imshow(imm)
     plt.show()
-
+    
     """
     7th step:
     Construct stripes using matched line segments
@@ -532,4 +542,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main() 
