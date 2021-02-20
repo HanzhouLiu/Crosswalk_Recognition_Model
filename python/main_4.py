@@ -10,13 +10,12 @@ import math
 import region_grow
 import rectangle_self
 import polarity
-import proximity
 import collinearity
 import shade
 import expand
 import matplotlib.pyplot as plt
 from random import gauss
-
+from scores import scores
 
 def main():
     # Hyper-parameters
@@ -50,13 +49,13 @@ def main():
     """
     img_blur = cv.GaussianBlur(img, sigmaX=0.6 / 0.8, sigmaY=0.6 / 0.8, ksize=(3, 3))
     cv.addWeighted(img_blur, 1.5, img, -0.5, 0, img)
-    # gauss_th = cv.adaptiveThreshold(img,255,cv.ADAPTIVE_THRESH_GAUSSIAN_C,cv.THRESH_BINARY,11,2)
+    # gauss_th = cv.adaptiveThreshold(img,255,cv.ADAPTIVE_THRstESH_GAUSSIAN_C,cv.THRESH_BINARY,11,2)
     ret3,otsu_th = cv.threshold(img_blur,0,255,cv.THRESH_BINARY+cv.THRESH_OTSU)
-    # cv.imwrite('../data/pre_img/img_blur2.jpg', img)
+    # cv.imwrite('../data/pre_img/img_otsu_th.jpg', otsu_th)
     # Visualization1: Preprocessed image
     # cv.imshow("img", otsu_th)
     # cv.waitKey(0)
-    
+    print(otsu_th)
     """
     2nd step: Compute Gradient
     """
@@ -469,7 +468,10 @@ def main():
 
     for i in range(K2):
         for j in range(K1):
-            score = proximity.proximity(pos_segments[j], neg_segments[i], eps_theta, img, grayscale=180, ratio=0.10)
+            # score = proximity.proximity(pos_segments[j], neg_segments[i], eps_theta, otsu_th, grayscale=180, ratio=0.35)
+            score1 = scores(pos_segments[j], neg_segments[i], eps_theta, otsu_th, grayscale=125, ratio=0.35).proximity()
+            score2 = scores(pos_segments[j], neg_segments[i], eps_theta, otsu_th, grayscale=125, ratio=0.35).check_color()
+            score = score1 * score2
             score_matrix[j, i] = score
 
     order = np.zeros((K1, K2))

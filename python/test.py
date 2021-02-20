@@ -121,6 +121,5 @@ print(list_0)
 print(type(list_0[0]))
 
 print("test 10*************************************************")
-q = (0, 1)
-print(q[0])
-print('error')
+q = np.array([1.1, 1], dtype=np.int32)
+print(q)
