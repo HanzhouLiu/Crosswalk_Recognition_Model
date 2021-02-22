@@ -7,6 +7,7 @@ import math
 import cv2 as cv
 import numpy as np
 import matplotlib.pyplot as plt
+from random import gauss
 
 # classes or functions written by myself
 import math_tools as mt
@@ -14,10 +15,9 @@ from region_grow import region_grow
 from rectangle_self import rectangle_self
 from polarity import polarity
 from collinearity import collinearity
-from shade import shade
-from expand import expand
-from random import gauss
+from stripe_operations import stripe_operations as so
 from scores import scores
+
 
 # main function
 def main():
@@ -27,7 +27,7 @@ def main():
     N = 400
 
     print("crosswalk recognition model")
-    filename = '../Samples/image008.jpg'
+    filename = '../Samples/image009.jpg'
     img = cv.imread(filename)
     gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
     # white pixel == 255
@@ -62,7 +62,7 @@ def main():
     # Visualization1: Preprocessed image
     # cv.imshow("img", otsu_th)
     # cv.waitKey(0)
-    print(otsu_th)
+    # print(otsu_th)
     """
     2nd step: Compute Gradient
     """
@@ -493,7 +493,7 @@ def main():
         for i in range(n2):
             # print(pos_segments[j][4, 0], neg_segments[i][4, 0])
             if score_matrix[j, i] > 0:
-                shade(pos_segments[j], neg_segments[i])
+                so(pos_segments[j], neg_segments[i]).shade()
                 if itr == 0:
                     pairs = np.array([[j], [i]])
                     itr = itr + 1
@@ -517,7 +517,7 @@ def main():
     for k in range(len(pairs[0, :])):
         j = pairs[0, k]
         i = pairs[1, k]
-        expand(pos_segments[j], neg_segments[i])
+        so(pos_segments[j], neg_segments[i]).expand()
     plt.imshow(imm)
     plt.show()
 

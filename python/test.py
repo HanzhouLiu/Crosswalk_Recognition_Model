@@ -120,6 +120,12 @@ for i in range(3):
 print(list_0)
 print(type(list_0[0]))
 
-print("test 10*************************************************")
-q = np.array([1.1, 1], dtype=np.int32)
-print(q)
+print("test 11*************************************************")
+class ComplexNumber:
+    def __init__(self, r, i):
+        self.real = r
+
+    def get_data(self):
+        print(self.real, i)
+
+ComplexNumber(r=1, i=10).get_data()
