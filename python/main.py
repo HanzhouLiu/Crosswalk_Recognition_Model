@@ -509,17 +509,21 @@ def main():
     """
     """
     Visualization 5:
-    Expand matched shaded areas with noises to regular geometric shapes.
+    Expand matched shaded areas to common egular geometric shapes,
+    including noise areas.
     """
     # ps:   pairs is a numpy array
     #       pos_segments and neg_segments are two numpy arrays
     #       pos_segments[j] neg_segments[i]
+    stripes = {}
     for k in range(len(pairs[0, :])):
         j = pairs[0, k]
         i = pairs[1, k]
-        so(pos_segments[j], neg_segments[i]).expand()
+        so(pos_segments[j], neg_segments[i]).expand()[0]
+        print(so(pos_segments[j], neg_segments[i]).vanishing_point())
     plt.imshow(imm)
     plt.show()
+
 
     """
     8th step:                   

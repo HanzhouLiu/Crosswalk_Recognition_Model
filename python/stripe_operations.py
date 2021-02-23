@@ -1,6 +1,7 @@
 import numpy as np
 import math
 import matplotlib.pyplot as plt
+import math_tools as mt
 
 class stripe_operations():
 
@@ -11,10 +12,10 @@ class stripe_operations():
     def shade(self):
         """
         (x2_p, y2_p) ***   (x2_n, y2_n)
-        /                |
-        /                 |
-        /                  |
-        /                   |
+                /                |
+               /                 |
+              /                  |
+             /                   |
         (x1_p, y1_p) ***   (x1_n, y1_n)
         :param pos_seg:
         :param neg_seg:
@@ -77,4 +78,13 @@ class stripe_operations():
 
         image = plt.fill(x, y)
 
-        return image
+        pos_endpoints = [[x1_pos, ymin], [x2_pos, ymax]]
+        neg_endpoints = [[x1_neg, ymin], [x2_neg, ymax]]
+
+        return image, pos_endpoints, neg_endpoints
+
+    def vanishing_point(self):
+        # x0, y0 = mt.line_intersection(pos_endpoints, neg_endpoints)
+        x0, y0 = mt.line_intersection(self.expand[1], self.expand[2])
+        
+        return (x0, y0)

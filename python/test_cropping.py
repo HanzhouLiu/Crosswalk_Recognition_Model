@@ -1,3 +1,8 @@
+"""
+For testing cropping and mask functions use. 
+"""
+
+
 import numpy as np
 import cv2
 

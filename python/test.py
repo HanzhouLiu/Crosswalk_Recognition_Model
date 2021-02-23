@@ -1,3 +1,8 @@
+"""
+Only for testing some unfamiliar functions.
+In other words, it's totally irrelevant to this model implementation.
+"""
+
 import numpy as np
 import math
 
@@ -129,3 +134,13 @@ class ComplexNumber:
         print(self.real, i)
 
 ComplexNumber(r=1, i=10).get_data()
+
+print("test 12*************************************************")
+arr_a = np.array([[1, 1], [1, 2]])
+print(arr_a[0])
+print(type(arr_a[0]))
+print(arr_a[0].shape)
+
+stripes = {}
+print(type(stripes))
+
