@@ -31,7 +31,6 @@ class stripe_operations():
         y2_p = self.pos[3, 0]
         y2_n = self.neg[3, 0]
 
-        # x1 = (r1 - y1 * math.sin(t1)) / math.cos(t1)
         x1_p = (r_p - y1_p * math.sin(t_p)) / math.cos(t_p)
         x1_n = (r_n - y1_n * math.sin(t_n)) / math.cos(t_n)
 
@@ -50,7 +49,6 @@ class stripe_operations():
         ymin = min(self.pos[2, 0], self.neg[2, 0])
         ymax = max(self.pos[3, 0], self.neg[3, 0])
 
-        # x1_p = (r_p - y1_p * math.sin(t_p)) / math.cos(t_p)
         rho_pos = self.pos[0, 0]
         rho_neg = self.neg[0, 0]
         theta_pos = self.pos[1, 0]
@@ -78,13 +76,16 @@ class stripe_operations():
 
         image = plt.fill(x, y)
 
-        pos_endpoints = [[x1_pos, ymin], [x2_pos, ymax]]
-        neg_endpoints = [[x1_neg, ymin], [x2_neg, ymax]]
+        pos_endpoints = np.array([[x1_pos, ymin], [x2_pos, ymax]])
+        neg_endpoints = np.array([[x1_neg, ymin], [x2_neg, ymax]])
 
         return image, pos_endpoints, neg_endpoints
 
     def vanishing_point(self):
-        # x0, y0 = mt.line_intersection(pos_endpoints, neg_endpoints)
-        x0, y0 = mt.line_intersection(self.expand[1], self.expand[2])
-        
+        pos_endpoints = [[self.expand()[1][0, 0], self.expand()[1][0, 1]], 
+        [self.expand()[1][1, 0], self.expand()[1][1, 1]]]
+        neg_endpoints = [[self.expand()[2][0, 0], self.expand()[2][0, 1]], 
+        [self.expand()[2][1, 0], self.expand()[2][1, 1]]]
+        x0, y0 = mt.line_intersection(pos_endpoints, neg_endpoints)
+
         return (x0, y0)

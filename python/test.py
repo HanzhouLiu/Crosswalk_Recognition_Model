@@ -5,6 +5,7 @@ In other words, it's totally irrelevant to this model implementation.
 
 import numpy as np
 import math
+import math_tools as mt
 
 img = np.random.rand(20, 30)
 img = np.array(img)
@@ -136,11 +137,13 @@ class ComplexNumber:
 ComplexNumber(r=1, i=10).get_data()
 
 print("test 12*************************************************")
-arr_a = np.array([[1, 1], [1, 2]])
-print(arr_a[0])
-print(type(arr_a[0]))
-print(arr_a[0].shape)
+arr_a = np.ones((1,1))
+print(arr_a)
 
-stripes = {}
-print(type(stripes))
-
+print("test 13*************************************************")
+b = []
+a = [5, 4, 3, 2, 1]
+b = a
+a.append(0)
+c = b[-1]
+print(c, a)

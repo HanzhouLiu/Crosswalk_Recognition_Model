@@ -17,7 +17,7 @@ from polarity import polarity
 from collinearity import collinearity
 from stripe_operations import stripe_operations as so
 from scores import scores
-
+from clustering import clustering
 
 # main function
 def main():
@@ -27,21 +27,20 @@ def main():
     N = 400
 
     print("crosswalk recognition model")
-    filename = '../Samples/image009.jpg'
+    filename = '../Samples/image003.jpg'
     img = cv.imread(filename)
     gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
     # white pixel == 255
     # black pixel == 0
     img = cv.resize(gray, (N, M))
-    # np.savetxt('gray_img.txt', img, fmt='%d')
     imm = img
+    # so that the image can be recognized easily
     img = 255 - img
     # cv.imshow("img", imm)
     # cv.waitKey(0)
     # cv.imwrite('grayscale_img2_.png', img)
     # cv.imshow("img", img)
     # cv.waitKey(0)
-    
     
     """
     1st step: GaussianBlur
@@ -72,7 +71,6 @@ def main():
     for x in range(img.shape[0]):
         for y in range(img.shape[1]):
             zero_padded_img[x, y] = img[x, y]
-    # zero_padded_img[:w, :h] = img
 
     x_kernel = np.array([[1, -1], [1, -1]])
     y_kernel = np.array([[1, 1], [-1, -1]])
@@ -91,16 +89,11 @@ def main():
     # plt.show()
 
     # print(gx)
-    # Saving the array in a text file
-    # np.savetxt("file1.txt", gx)
-
-    # Displaying the contents of the text file
-    # content = np.loadtxt('file1.txt')
-    # print("\nContent in file1.txt:\n", content)
 
     angle = mt.atan2(-gy, gx)
-    # the arctangent of all four quadrants can be calculated by using the atan2 function
+    # arct of all four quadrants can be calculated by using the atan2 function
     G = mt.sqrt(gx, gy)
+
     """
     3rd step: Sort Gradient 
     """
@@ -454,7 +447,8 @@ def main():
     plt.show()
     """
     6th step:
-    Matching Line Segments
+    Matching Line Segments:
+    a) Remove stripes whose potential crosswalk area occupies less that a threshold.
     """
     K1 = len(pos_segments)
     # debug result: len(pos_segments)=11
@@ -505,7 +499,9 @@ def main():
     
     """
     7th step:
-    Construct stripes using matched line segments
+    Stripe operations:
+    a) Expand each stripe so that it's of the crosswalk shape.
+    b) Remove srtipes whose vanishing point cannot be clustered, given a distance threshold.
     """
     """
     Visualization 5:
@@ -515,16 +511,29 @@ def main():
     # ps:   pairs is a numpy array
     #       pos_segments and neg_segments are two numpy arrays
     #       pos_segments[j] neg_segments[i]
-    stripes = {}
+    list_A = []
+    pairs_idxes = []
     for k in range(len(pairs[0, :])):
         j = pairs[0, k]
         i = pairs[1, k]
         so(pos_segments[j], neg_segments[i]).expand()[0]
+        # For experiment use, output all pairs' vanishing points
         print(so(pos_segments[j], neg_segments[i]).vanishing_point())
+        list_A.append(so(pos_segments[j], neg_segments[i]).vanishing_point())
     plt.imshow(imm)
     plt.show()
 
+    # print(clustering(list_A).single_linkage(10))
 
+    for pairs_idx in clustering(list_A).single_linkage(20):
+        pairs_idxes.append(pairs_idx)
+
+    for pairs_idx in pairs_idxes:
+        j = pairs[0, pairs_idx]
+        i = pairs[1, pairs_idx]
+        so(pos_segments[j], neg_segments[i]).expand()[0]
+    plt.imshow(imm)
+    plt.show()
     """
     8th step:                   
     """

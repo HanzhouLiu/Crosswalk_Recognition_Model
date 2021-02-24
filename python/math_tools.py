@@ -62,3 +62,9 @@ def line_intersection(line1, line2):
     x = det(d, xdiff) / div
     y = det(d, ydiff) / div
     return x, y
+
+def dist(p1, p2):
+    diff_x = p1[0] - p2[0]
+    diff_y = p1[1] - p2[1]
+    d = math.sqrt(diff_x ** 2 + diff_y ** 2)
+    return d
