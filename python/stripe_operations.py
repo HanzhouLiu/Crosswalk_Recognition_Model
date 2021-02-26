@@ -43,7 +43,7 @@ class stripe_operations():
 
         return image
 
-    def expand(self):
+    def expand_plt_img(self):
         ymin_pos = self.pos[2, 0]
         ymax_pos = self.pos[3, 0]
         ymin = min(self.pos[2, 0], self.neg[2, 0])
@@ -74,18 +74,53 @@ class stripe_operations():
         x = [x1_pos, x2_pos, x2_neg, x1_neg]
         y = [300 - ymin, 300 - ymax, 300 - ymax, 300 - ymin]
 
-        image = plt.fill(x, y)
+        plt.fill(x, y)
 
+    def expand(self):
+        ymin_pos = self.pos[2, 0]
+        ymax_pos = self.pos[3, 0]
+        ymin = min(self.pos[2, 0], self.neg[2, 0])
+        ymax = max(self.pos[3, 0], self.neg[3, 0])
+
+        rho_pos = self.pos[0, 0]
+        rho_neg = self.neg[0, 0]
+        theta_pos = self.pos[1, 0]
+        theta_neg = self.neg[1, 0]
+        x1_pos = (rho_pos - ymin * math.sin(theta_pos)) / math.cos(theta_pos)
+        x2_pos = (rho_pos - ymax * math.sin(theta_pos)) / math.cos(theta_pos)
+        x1_neg = (rho_neg - ymin * math.sin(theta_neg)) / math.cos(theta_neg)
+        x2_neg = (rho_neg - ymax * math.sin(theta_neg)) / math.cos(theta_neg)
+
+        """
+        (x2_pos, ymax)---(x2_neg, ymax)
+            |               |
+            |               |
+            |               |
+            |               |
+            |               |
+        (x1_pos, ymin)---(x1_neg, ymin)
+        clock wise->
+                |  |
+                <-
+        """
+
+        # x = [x1_pos, x2_pos, x2_neg, x1_neg]
+        # y = [300 - ymin, 300 - ymax, 300 - ymax, 300 - ymin]
+
+        # image = plt.fill(x, y)
+        # pos_endpoints: dtype = np array
         pos_endpoints = np.array([[x1_pos, ymin], [x2_pos, ymax]])
         neg_endpoints = np.array([[x1_neg, ymin], [x2_neg, ymax]])
-
-        return image, pos_endpoints, neg_endpoints
+        # up_edges: dtype = list of tuples
+        up_edge = [(x2_pos, ymax), (x2_neg, ymax)]
+        down_edge = [(x1_pos, ymin), (x1_neg, ymin)]
+        return pos_endpoints, neg_endpoints, up_edge, down_edge
 
     def vanishing_point(self):
-        pos_endpoints = [[self.expand()[1][0, 0], self.expand()[1][0, 1]], 
+        pos_endpoints = [[self.expand()[0][0, 0], self.expand()[0][0, 1]], 
+        [self.expand()[0][1, 0], self.expand()[0][1, 1]]]
+        neg_endpoints = [[self.expand()[1][0, 0], self.expand()[1][0, 1]], 
         [self.expand()[1][1, 0], self.expand()[1][1, 1]]]
-        neg_endpoints = [[self.expand()[2][0, 0], self.expand()[2][0, 1]], 
-        [self.expand()[2][1, 0], self.expand()[2][1, 1]]]
         x0, y0 = mt.line_intersection(pos_endpoints, neg_endpoints)
 
         return (x0, y0)

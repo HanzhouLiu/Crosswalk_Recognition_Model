@@ -141,9 +141,6 @@ arr_a = np.ones((1,1))
 print(arr_a)
 
 print("test 13*************************************************")
-b = []
-a = [5, 4, 3, 2, 1]
-b = a
-a.append(0)
-c = b[-1]
-print(c, a)
+arr_c = np.ones(10)
+arr_c[9] = 0
+print(arr_c)

@@ -18,13 +18,23 @@ from collinearity import collinearity
 from stripe_operations import stripe_operations as so
 from scores import scores
 from clustering import clustering
+# from linear_filter import linear_filter
 
 # main function
 def main():
     # codes writing after a harsh symbol are for notes or debug
-    # parameters of image size
+    # parameter: (M, N) image size
     M = 300
     N = 400
+    # %%
+    # 1st step: Img Preprocessing
+    """
+    Filter the image with a Gaussian filter with standard deviation of 0.6/0.8
+    Therefore, a Gaussian kernel is used.
+    It's done with the function cv2.GaussianBlur()
+
+    ps: OTSU's Binarization is used to differentiate dark areas and bright areas
+    """
 
     print("crosswalk recognition model")
     filename = '../Samples/image003.jpg'
@@ -41,18 +51,7 @@ def main():
     # cv.imwrite('grayscale_img2_.png', img)
     # cv.imshow("img", img)
     # cv.waitKey(0)
-    
-    """
-    1st step: GaussianBlur
 
-    Filter the image with a Gaussian filter with standard deviation of 0.6/0.8
-
-    Therefore, a Gaussian kernel is used.
-
-    It's done with the function cv2.GaussianBlur()
-    
-    ps: OTSU's Binarization is used to differentiate dark areas and bright areas
-    """
     img_blur = cv.GaussianBlur(img, sigmaX=0.6 / 0.8, sigmaY=0.6 / 0.8, ksize=(3, 3))
     cv.addWeighted(img_blur, 1.5, img, -0.5, 0, img)
     # gauss_th = cv.adaptiveThreshold(img,255,cv.ADAPTIVE_THRstESH_GAUSSIAN_C,cv.THRESH_BINARY,11,2)
@@ -62,9 +61,10 @@ def main():
     # cv.imshow("img", otsu_th)
     # cv.waitKey(0)
     # print(otsu_th)
-    """
-    2nd step: Compute Gradient
-    """
+    # %%
+    # 2nd step: Compute Gradient
+    
+
     [w, h] = img.shape
     # w=image width, h=image height
     zero_padded_img = np.zeros((w + 1, h + 1))
@@ -81,23 +81,19 @@ def main():
     #     for j in range(gx.shape[1]):
     #         if gx[i, j] < 0:
     #             print(gx[i, j])
-    """
-    To calculate 2d convolution, using cv2.sobel is also a good idea
-    """
 
     # plt.imshow(zero_padded_img, cmap='gray')
     # plt.show()
-
     # print(gx)
 
+    # atan2: arct of all four quadrants 
     angle = mt.atan2(-gy, gx)
-    # arct of all four quadrants can be calculated by using the atan2 function
     G = mt.sqrt(gx, gy)
+    # %%
+    # 3rd step: Sort Gradient 
+    
 
-    """
-    3rd step: Sort Gradient 
-    """
-    # threshold parameters
+    # parameters: thlds
     tau = math.pi / 8
     q = 2
     threshold = q / math.sin(tau)
@@ -148,9 +144,10 @@ def main():
                 edge.append(c)
         print(edge)
     """
-    """
-    4th step: Region Grow
-    """
+    # %%
+    # 4th step: Region Grow
+
+
     # output for next step
     output_regions = {}
     output_rectangles = {}
@@ -210,8 +207,11 @@ def main():
                 # print('count=', count)
         # print(bin_ends[itr][0])
         # print(type(bin_ends[itr]))
+    # %%
+    # 5th step: Group line segments
+
+
     """
-    5th step: Group line segments
     this step is to create line segments
     [rho, theta, xmin, xmax, polarity]
     theta in region [0, pi]
@@ -444,10 +444,12 @@ def main():
         else:
             plt.plot(x_axis, y_axis, 'r', lw=1)
     plt.imshow(imm)
-    plt.show()
+    plt.show()    
+    # %%
+    # 6th step: Matching Line Segments:
+
+
     """
-    6th step:
-    Matching Line Segments:
     a) Remove stripes whose potential crosswalk area occupies less that a threshold.
     """
     K1 = len(pos_segments)
@@ -496,10 +498,11 @@ def main():
                     itr = itr + 1
     plt.imshow(imm)
     plt.show()
-    
+    # %%
+    # 7th step: Stripe Operations
+
+
     """
-    7th step:
-    Stripe operations:
     a) Expand each stripe so that it's of the crosswalk shape.
     b) Remove srtipes whose vanishing point cannot be clustered, given a distance threshold.
     """
@@ -516,29 +519,76 @@ def main():
     for k in range(len(pairs[0, :])):
         j = pairs[0, k]
         i = pairs[1, k]
-        so(pos_segments[j], neg_segments[i]).expand()[0]
+        so(pos_segments[j], neg_segments[i]).expand_plt_img()
         # For experiment use, output all pairs' vanishing points
         print(so(pos_segments[j], neg_segments[i]).vanishing_point())
         list_A.append(so(pos_segments[j], neg_segments[i]).vanishing_point())
     plt.imshow(imm)
     plt.show()
-
+    # use single linkage clustering to remove noises
     # print(clustering(list_A).single_linkage(10))
-
     for pairs_idx in clustering(list_A).single_linkage(20):
         pairs_idxes.append(pairs_idx)
 
     for pairs_idx in pairs_idxes:
         j = pairs[0, pairs_idx]
         i = pairs[1, pairs_idx]
-        so(pos_segments[j], neg_segments[i]).expand()[0]
+        so(pos_segments[j], neg_segments[i]).expand_plt_img()
     plt.imshow(imm)
     plt.show()
-    """
-    8th step:                   
-    """
+    # %%
+    # 8th step: Pack Stripes and Generate Final Crosswalk Stripes                
+    # up_edge = np.zeros((2, 2))
+    # down_edge= np.zeros((2, 2))
+    polygon_usage = np.zeros(len(pairs_idxes), dtype=int)
+    crosswalks = []
+    for ii in range(len(pairs_idxes)):
+        if polygon_usage[ii] == used:
+            continue
+        wait_list = []
+        wait_list.append(ii)
+        iii = pairs[1, pairs_idxes[ii]]
+        jjj = pairs[0, pairs_idxes[ii]]
+        # so.expand function return a list of two tuples
+        up_edge = so(pos_segments[jjj], neg_segments[iii]).expand()[2]
+        down_edge = so(pos_segments[jjj], neg_segments[iii]).expand()[3]
+        # print(up_edge)
+        # print(down_edge)
+        # up_edge = np.array([[so(pos_segments[jjj], neg_segments[iii]).expand()[2][0][0], so(pos_segments[jjj], neg_segments[iii]).expand()[2][0][1]], [so(pos_segments[jjj], neg_segments[iii]).expand()[2][1][0], so(pos_segments[jjj], neg_segments[iii]).expand()[2][1][1]]])
+        # down_edge = np.array([[so(pos_segments[jjj], neg_segments[iii]).expand()[3][0][0], so(pos_segments[jjj], neg_segments[iii]).expand()[3][0][1]], [so(pos_segments[jjj], neg_segments[iii]).expand()[3][1][0], so(pos_segments[jjj], neg_segments[iii]).expand()[3][1][1]]])
+        polygon_usage[ii] = used
+        for jj in range(ii+1, len(pairs_idxes)):
+            if polygon_usage[jj] == used:
+                continue
+            i = pairs[1, pairs_idxes[jj]]
+            j = pairs[0, pairs_idxes[jj]]
+            # print('in this itr')
+            # print('pos_segments =', pos_segments[j])
+            # print('neg_segments =', neg_segments[i])
+            
+            if collinearity(pos_segments[j], pos_segments[jjj], eps_dist) == 1:
+                # print(1)
+                wait_list.append(jj)
+                polygon_usage[jj] = used
+                print(polygon_usage)
+        print(wait_list)
+        for k in range(len(wait_list)):
+            i = pairs[1, pairs_idxes[wait_list[k]]]
+            j = pairs[0, pairs_idxes[wait_list[k]]]
+            if up_edge[0][1] < so(pos_segments[j], neg_segments[i]).expand()[2][0][1]:
+                up_edge=so(pos_segments[j], neg_segments[i]).expand()[2]
+                # up_edge = np.array([[so(pos_segments[jjjj], neg_segments[iiii]).expand()[2][0][0], so(pos_segments[jjjj], neg_segments[iiii]).expand()[2][0][1]], [so(pos_segments[jjjj], neg_segments[iiii]).expand()[2][1][0], so(pos_segments[jjjj], neg_segments[iiii]).expand()[2][1][1]]])
+            if down_edge[0][1] > so(pos_segments[j], neg_segments[i]).expand()[3][0][1]:
+                down_edge=so(pos_segments[j], neg_segments[i]).expand()[3]
+        crosswalks.append([up_edge, down_edge])
 
-
+    for crosswalk in crosswalks:
+        # each crosswalk is a list of two lists, each list is of two tuples
+        x = [crosswalk[0][0][0], crosswalk[0][1][0], crosswalk[1][1][0], crosswalk[1][0][0]]
+        y = [300-crosswalk[0][0][1], 300-crosswalk[0][1][1], 300-crosswalk[1][1][1], 300-crosswalk[1][0][1]]
+        plt.fill(x, y)
+    plt.imshow(imm)
+    plt.show()
 # execute the main function
 if __name__ == "__main__":
     main() 
